@@ -206,83 +206,143 @@
 
   /* ---------- Lever: CDSS's debt ---------- */
 
-  function setupCDSSLever(inputs, result) {
-    const { cdss } = inputs;
-    const { rows, best } = result;
+  // The figures the CDSS slider is showing. Replaced when a new schedule loads;
+  // the slider and button listeners are attached only once and read from here.
+  let lever = null;
+  let leverWired = false;
+
+  function stakeText(cdss, rep) {
+    const s = C.managementStake(cdss, rep);
+    if (s.status === 'allBought') return { value: '100.00%', note: 'No outside shareholders would be left.' };
+    if (s.status === 'mustSell') {
+      return { value: 'n/a', warn: `Management would have to sell ${C.fmtShares(s.shortfall)} shares; outsiders don't own enough.` };
+    }
+    return { value: C.fmtPct(s.stake) };
+  }
+
+  function methodCard(title, m, isBestPrice, waccLabel, r) {
+    const stake = stakeText(lever.cdss, m.repurchased);
+    const line = (k, v, extra) => el('div', { class: 'kv' }, [el('dt', null, [k]), el('dd', null, [v, extra || null])]);
+    return el('div', { class: 'method-card' }, [
+      el('h4', null, [title]),
+      el('dl', null, [
+        line('Share price', C.fmtCents(m.price), isBestPrice ? badge('Highest') : null),
+        line('Shares repurchased', C.fmtShares(m.repurchased)),
+        line('Shares remaining', C.fmtShares(m.remaining)),
+        line('EPS', C.fmtCents(m.eps)),
+        line('Dividends per share', C.fmtCents(m.dps)),
+        line('TIE', C.fmtMult(r.tie)),
+        line(waccLabel, C.fmtPct(m.wacc)),
+        line("Management's share", stake.value),
+      ]),
+      stake.note ? el('p', { class: 'note small' }, [stake.note]) : null,
+      stake.warn ? el('div', { class: 'warning' }, ['⚠ ' + stake.warn]) : null,
+    ]);
+  }
+
+  function updateCDSSLever() {
     const slider = document.getElementById('cdss-debt');
-    const out = document.getElementById('cdss-debt-out');
-    const note = document.getElementById('button-note');
-    const panel = document.getElementById('cdss-results');
+    const { cdss, rows, best } = lever;
+    const r = rows[Number(slider.value)];
+    document.getElementById('cdss-debt-out').textContent = C.fmtDollars(r.debt);
+    slider.setAttribute('aria-valuetext', C.fmtDollars(r.debt));
+    document.getElementById('cdss-results').replaceChildren(
+      methodCard(`Case method: buy back at ${C.fmtCents(cdss.price)}`, r.case, r.debt === best.casePrice, 'WACC (book weights)', r),
+      methodCard('New-price method: buy back at the new price', r.newPrice, r.debt === best.newPrice, 'WACC (market weights)', r)
+    );
+    // Outline the matching row in both tables
+    document.querySelectorAll('#cdss tr[data-debt]').forEach((tr) => {
+      tr.classList.toggle('selected', tr.dataset.debt === String(r.debt));
+    });
+  }
+
+  function goTo(caseDebt, newDebt, what) {
+    const pick = C.chooseDebt(caseDebt, newDebt);
+    if (pick.debt === null) return;
+    document.getElementById('cdss-debt').value = String(lever.rows.findIndex((r) => r.debt === pick.debt));
+    document.getElementById('button-note').replaceChildren(
+      pick.differ
+        ? el('div', { class: 'warning' }, [
+            `The two methods disagree on the ${what}: the case method picks ${C.fmtDollars(pick.caseDebt)}, ` +
+              `the new-price method picks ${C.fmtDollars(pick.newDebt)}. The slider shows the case method's amount.`,
+          ])
+        : el('p', { class: 'note' }, [`Both buyback methods give the ${what} at ${C.fmtDollars(pick.debt)}.`])
+    );
+    updateCDSSLever();
+  }
+
+  function setupCDSSLever(inputs, result) {
+    const slider = document.getElementById('cdss-debt');
+    // Keep the slider on the same amount if the new schedule has it.
+    const previousDebt = lever ? lever.rows[Number(slider.value)].debt : null;
+    lever = { cdss: inputs.cdss, rows: result.rows, best: result.best };
 
     // The slider moves over the schedule's rows, one step per banker amount.
-    slider.max = String(rows.length - 1);
-    slider.value = '0';
+    slider.max = String(lever.rows.length - 1);
+    const keep = lever.rows.findIndex((r) => r.debt === previousDebt);
+    slider.value = String(keep < 0 ? 0 : keep);
     document.getElementById('cdss-ticks').replaceChildren(
-      ...rows.map((r) => el('span', null, [r.debt >= 1e6 ? '$' + r.debt / 1e6 + 'M' : '$' + r.debt / 1e3 + 'k']))
+      ...lever.rows.map((r) => el('span', null, [r.debt === 0 ? '$0' : r.debt >= 1e6 ? '$' + r.debt / 1e6 + 'M' : '$' + r.debt / 1e3 + 'k']))
     );
+    document.getElementById('button-note').replaceChildren();
 
-    function stakeText(rep) {
-      const s = C.managementStake(cdss, rep);
-      if (s.status === 'allBought') return { value: '100.00%', note: 'No outside shareholders would be left.' };
-      if (s.status === 'mustSell') {
-        return { value: 'n/a', warn: `Management would have to sell ${C.fmtShares(s.shortfall)} shares; outsiders don't own enough.` };
+    if (!leverWired) {
+      leverWired = true;
+      slider.addEventListener('input', () => { document.getElementById('button-note').replaceChildren(); updateCDSSLever(); });
+      document.getElementById('btn-best-price').addEventListener('click', () =>
+        goTo(lever.best.casePrice, lever.best.newPrice, 'highest share price'));
+      document.getElementById('btn-best-eps').addEventListener('click', () =>
+        goTo(lever.best.caseEPS, lever.best.newEPS, 'highest EPS'));
+    }
+    updateCDSSLever();
+  }
+
+  /* ---------- Loading another banker's schedule (Part F) ---------- */
+
+  // The file is read on this device with FileReader. Nothing is uploaded.
+  function setupScheduleLoader(inputs) {
+    const caseSchedule = inputs.schedule;
+    const input = document.getElementById('schedule-file');
+    const back = document.getElementById('btn-case-schedule');
+    const name = document.getElementById('schedule-name');
+    const status = document.getElementById('schedule-status');
+    const MAX_BYTES = 100 * 1024;
+
+    name.textContent = "the AGE case's investment banker (data/banker_schedule.csv)";
+
+    function use(schedule, label, message) {
+      renderCDSS(Object.assign({}, inputs, { schedule }));
+      name.textContent = label;
+      back.hidden = schedule === caseSchedule;
+      status.replaceChildren(message ? el('p', { class: 'loaded-ok' }, [message]) : '');
+    }
+
+    input.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      input.value = ''; // so choosing the same file again still triggers a load
+      if (!file) return;
+      if (file.size > MAX_BYTES) {
+        status.replaceChildren(el('div', { class: 'warning' }, [`⚠ ${file.name} is too large for a banker's schedule. The schedule was not changed.`]));
+        return;
       }
-      return { value: C.fmtPct(s.stake) };
-    }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const schedule = C.parseSchedule(C.parseCSV(reader.result));
+          use(schedule, `${file.name} (loaded from this device)`,
+            `Loaded ${schedule.length} amounts of borrowing from ${file.name}. Every CDSS figure below now uses this schedule.`);
+        } catch (err) {
+          status.replaceChildren(el('div', { class: 'warning' }, [`⚠ ${file.name} could not be used: ${err.message}. The schedule was not changed.`]));
+        }
+      };
+      reader.onerror = () => {
+        status.replaceChildren(el('div', { class: 'warning' }, [`⚠ ${file.name} could not be read. The schedule was not changed.`]));
+      };
+      reader.readAsText(file);
+    });
 
-    function methodCard(title, m, waccLabel, r) {
-      const stake = stakeText(m.repurchased);
-      const line = (k, v, extra) => el('div', { class: 'kv' }, [el('dt', null, [k]), el('dd', null, [v, extra || null])]);
-      return el('div', { class: 'method-card' }, [
-        el('h4', null, [title]),
-        el('dl', null, [
-          line('Share price', C.fmtCents(m.price), m === r.case && r.debt === best.casePrice || m === r.newPrice && r.debt === best.newPrice ? badge('Highest') : null),
-          line('Shares repurchased', C.fmtShares(m.repurchased)),
-          line('Shares remaining', C.fmtShares(m.remaining)),
-          line('EPS', C.fmtCents(m.eps)),
-          line('Dividends per share', C.fmtCents(m.dps)),
-          line('TIE', C.fmtMult(r.tie)),
-          line(waccLabel, C.fmtPct(m.wacc)),
-          line("Management's share", stake.value),
-        ]),
-        stake.note ? el('p', { class: 'note small' }, [stake.note]) : null,
-        stake.warn ? el('div', { class: 'warning' }, ['⚠ ' + stake.warn]) : null,
-      ]);
-    }
-
-    function update() {
-      const r = rows[Number(slider.value)];
-      out.textContent = C.fmtDollars(r.debt);
-      slider.setAttribute('aria-valuetext', C.fmtDollars(r.debt));
-      panel.replaceChildren(
-        methodCard(`Case method: buy back at ${C.fmtCents(cdss.price)}`, r.case, 'WACC (book weights)', r),
-        methodCard('New-price method: buy back at the new price', r.newPrice, 'WACC (market weights)', r)
-      );
-      // Outline the matching row in both tables
-      document.querySelectorAll('#cdss tr[data-debt]').forEach((tr) => {
-        tr.classList.toggle('selected', tr.dataset.debt === String(r.debt));
-      });
-    }
-
-    function goTo(caseDebt, newDebt, what) {
-      const pick = C.chooseDebt(caseDebt, newDebt);
-      if (pick.debt === null) return;
-      slider.value = String(rows.findIndex((r) => r.debt === pick.debt));
-      note.replaceChildren(
-        pick.differ
-          ? el('div', { class: 'warning' }, [
-              `The two methods disagree on the ${what}: the case method picks ${C.fmtDollars(pick.caseDebt)}, ` +
-                `the new-price method picks ${C.fmtDollars(pick.newDebt)}. The slider shows the case method's amount.`,
-            ])
-          : el('p', { class: 'note' }, [`Both buyback methods give the ${what} at ${C.fmtDollars(pick.debt)}.`])
-      );
-      update();
-    }
-
-    slider.addEventListener('input', () => { note.replaceChildren(); update(); });
-    document.getElementById('btn-best-price').addEventListener('click', () => goTo(best.casePrice, best.newPrice, 'highest share price'));
-    document.getElementById('btn-best-eps').addEventListener('click', () => goTo(best.caseEPS, best.newEPS, 'highest EPS'));
-    update();
+    back.addEventListener('click', () =>
+      use(caseSchedule, "the AGE case's investment banker (data/banker_schedule.csv)", 'Back to the case schedule.'));
   }
 
   /* ---------- Lever: Firm L's debt ---------- */
@@ -360,6 +420,7 @@
       renderFirms(inputs);
       setupFirmLever(inputs);
       renderCDSS(inputs);
+      setupScheduleLoader(inputs);
       status.hidden = true;
     })
     .catch((err) => {

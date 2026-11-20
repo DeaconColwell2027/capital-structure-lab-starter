@@ -164,7 +164,34 @@ button {
   color: var(--surface);
   cursor: pointer;
 }
-button:hover { filter: brightness(1.1); }
+label.button {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  padding: 8px 16px;
+  min-height: 40px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--surface);
+  cursor: pointer;
+}
+input[type="file"]:focus-visible + label.button, label.button:focus-within { outline: 3px solid var(--accent-soft); }
+button.secondary { background: transparent; color: var(--accent); }
+button:hover, label.button:hover { filter: brightness(1.1); }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.schedule-box { margin: 12px 0; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 8px; }
+.schedule-box .buttons { margin: 8px 0; }
+.schedule-source { margin: 0; }
+.schedule-box a { color: var(--accent); }
+.loaded-ok { margin: 8px 0 0; color: var(--best-ink); font-size: 0.9rem; }
 button:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
 
 .method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
