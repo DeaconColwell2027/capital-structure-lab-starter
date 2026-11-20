@@ -54,6 +54,17 @@
     <section id="cdss" class="panel" hidden>
       <h2>Campus Deli and Sub Shop <span class="tag">Question d</span></h2>
       <dl class="facts" id="cdss-facts"></dl>
+      <div class="schedule-box">
+        <p class="schedule-source">Banker's schedule: <strong id="schedule-name"></strong></p>
+        <div class="buttons">
+          <label class="button" for="schedule-file">Load a schedule from this device</label>
+          <input type="file" id="schedule-file" accept=".csv,text/csv" class="visually-hidden">
+          <button type="button" id="btn-case-schedule" class="secondary" hidden>Back to the case schedule</button>
+        </div>
+        <p class="note">The file is read inside your browser and never uploaded. It needs the columns <code>debt</code>, <code>cost_of_debt</code> and <code>cost_of_equity</code>, as in <a href="data/banker_schedule.csv" download>the case's schedule</a>. To try Part F, download <a href="data/banker_schedule_riskier.csv" download>the riskier test schedule</a> (made up, not part of the AGE case) and load it.</p>
+        <div id="schedule-status" role="status"></div>
+      </div>
+
       <div id="cdss-summary" class="summary"></div>
 
       <div class="lever" id="cdss-lever">

@@ -98,6 +98,33 @@
     return toNumber(r.value, `${file}, ${key}`);
   }
 
+  // Check a banker schedule (the case's file or one the student loads) and
+  // return its rows sorted by debt: [{ debt, rd, rs }].
+  function parseSchedule(rows) {
+    if (!rows.length) throw new Error('The banker schedule has no rows');
+    const missing = ['debt', 'cost_of_debt', 'cost_of_equity'].filter((h) => !(h in rows[0]));
+    if (missing.length) {
+      throw new Error(`The banker schedule needs the columns debt, cost_of_debt and cost_of_equity; missing: ${missing.join(', ')}`);
+    }
+    const schedule = rows
+      .map((r, i) => {
+        const where = `banker schedule, row ${i + 2}`;
+        const debt = toNumber(r.debt, `${where}, debt`);
+        if (debt < 0) throw new Error(`${where}: debt can't be negative`);
+        const rd = r.cost_of_debt === '' ? null : toNumber(r.cost_of_debt, `${where}, cost_of_debt`);
+        const rs = toNumber(r.cost_of_equity, `${where}, cost_of_equity`);
+        if (debt > 0 && rd === null) throw new Error(`${where}: borrowing $${debt} needs a cost of debt`);
+        if (rd !== null && (rd < 0 || rd >= 1)) throw new Error(`${where}: cost of debt should be a decimal such as 0.10 for 10%`);
+        if (rs <= 0 || rs >= 1) throw new Error(`${where}: cost of equity should be a decimal such as 0.15 for 15%`);
+        return { debt, rd, rs };
+      })
+      .sort((a, b) => a.debt - b.debt);
+    schedule.forEach((r, i) => {
+      if (i > 0 && r.debt === schedule[i - 1].debt) throw new Error(`The banker schedule lists $${r.debt} twice`);
+    });
+    return schedule;
+  }
+
   // Turn the parsed CSV rows into the inputs the math needs.
   // raw = { cdss, assumptions, schedule, firms, scenarios }, each an array of rows.
   function buildInputs(raw) {
@@ -115,18 +142,7 @@
       managementShare: c('management_share'),
     };
 
-    const schedule = raw.schedule
-      .map((r, i) => {
-        const where = `banker schedule, row ${i + 2}`;
-        const debt = toNumber(r.debt, `${where}, debt`);
-        const rd = r.cost_of_debt === '' ? null : toNumber(r.cost_of_debt, `${where}, cost_of_debt`);
-        const rs = toNumber(r.cost_of_equity, `${where}, cost_of_equity`);
-        if (debt > 0 && rd === null) throw new Error(`${where}: borrowing $${debt} needs a cost of debt`);
-        if (rs <= 0) throw new Error(`${where}: cost of equity must be above zero`);
-        return { debt, rd, rs };
-      })
-      .sort((a, b) => a.debt - b.debt);
-    if (!schedule.length) throw new Error('The banker schedule has no rows');
+    const schedule = parseSchedule(raw.schedule);
 
     const f = (k) => findValue(raw.firms, 'item', k, 'example_firms.csv');
     const firms = {
@@ -366,6 +382,7 @@
     fmt2,
     fmtShares,
     parseCSV,
+    parseSchedule,
     buildInputs,
     distribution,
     exampleFirm,
