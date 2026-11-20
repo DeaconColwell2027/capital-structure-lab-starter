@@ -22,6 +22,17 @@
       <h2>Firm U and Firm L <span class="tag">Question c</span></h2>
       <p class="note" id="firms-intro"></p>
       <div class="firm-grid" id="firm-tables"></div>
+      <div class="lever" id="firm-lever">
+        <h3>Lever: Firm L's debt</h3>
+        <label class="slider-label" for="firm-debt">Firm L's debt: <output id="firm-debt-out"></output></label>
+        <input type="range" id="firm-debt" min="0" step="1" value="0">
+        <div class="buttons">
+          <button type="button" id="btn-case">Case</button>
+        </div>
+        <p class="note" id="firm-rate-note"></p>
+        <div id="firm-compare"></div>
+      </div>
+
       <details class="formulas">
         <summary>How these are calculated</summary>
         <ul>
@@ -38,6 +49,20 @@
       <h2>Campus Deli and Sub Shop <span class="tag">Question d</span></h2>
       <dl class="facts" id="cdss-facts"></dl>
       <div id="cdss-summary" class="summary"></div>
+
+      <div class="lever" id="cdss-lever">
+        <h3>Lever: CDSS's debt</h3>
+        <label class="slider-label" for="cdss-debt">Amount borrowed: <output id="cdss-debt-out"></output></label>
+        <input type="range" id="cdss-debt" min="0" step="1" value="0">
+        <div class="ticks" id="cdss-ticks" aria-hidden="true"></div>
+        <div class="buttons">
+          <button type="button" id="btn-best-price">Best price</button>
+          <button type="button" id="btn-best-eps">Highest EPS</button>
+        </div>
+        <p class="note">The slider stops only at the banker's amounts. There are no costs of debt or equity in between.</p>
+        <div id="button-note"></div>
+        <div class="method-grid" id="cdss-results"></div>
+      </div>
 
       <h3>Case method: buy back at today's <span id="p0"></span> <span class="tag">d(3), d(4), d(7)</span></h3>
       <p class="note">Shares repurchased = D ÷ P₀. EPS = net income ÷ shares remaining. Price = EPS ÷ r<sub>s</sub>. WACC uses book weights: D/A × r<sub>d</sub>(1 − T) + (A − D)/A × r<sub>s</sub>.</p>

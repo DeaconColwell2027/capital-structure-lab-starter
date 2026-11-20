@@ -328,8 +328,36 @@
     return { ebit: cdssEBIT(cdss), rows, best, warnings };
   }
 
+  // Management's stake after the buyback. Management doesn't sell, so its
+  // shares stay at managementShare × n while the total shrinks.
+  //   status 'ok'        : stake = management's shares / shares remaining
+  //   status 'allBought' : every outside share is bought back, stake = 100%
+  //   status 'mustSell'  : the buyback needs more shares than outsiders own
+  function managementStake(c, repurchased) {
+    const n = c.shares;
+    const mgmtShares = c.managementShare * n;
+    const outside = n - mgmtShares;
+    const tol = 1e-9 * Math.max(1, n);
+    if (repurchased > outside + tol) return { status: 'mustSell', stake: null, shortfall: repurchased - outside };
+    if (Math.abs(repurchased - outside) <= tol) return { status: 'allBought', stake: 1 };
+    return { status: 'ok', stake: mgmtShares / (n - repurchased) };
+  }
+
+  // Where a button should send the CDSS slider, given the amount each
+  // buyback method picks. Same amount: go there. Different: go to the case
+  // method's amount and say so. (Ties within a method already go to the
+  // smaller amount in bestIndex.)
+  function chooseDebt(caseDebt, newDebt) {
+    if (caseDebt === null && newDebt === null) return { debt: null, differ: false };
+    if (caseDebt === null) return { debt: newDebt, differ: false };
+    if (newDebt === null || caseDebt === newDebt) return { debt: caseDebt, differ: false };
+    return { debt: caseDebt, differ: true, caseDebt, newDebt };
+  }
+
   return {
     roundHalfUp,
+    managementStake,
+    chooseDebt,
     fmtDollars,
     fmtCost,
     fmtCents,
