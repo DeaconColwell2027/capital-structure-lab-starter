@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AGE Capital Structure</title>
+  <meta name="description" content="Campus Deli and Sub Shop's capital structure: EPS, TIE, share price and WACC at each amount of borrowing, plus the Firm U and Firm L example.">
+  <meta name="theme-color" content="#1f5c99">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Cap Structure">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <p class="eyebrow">FIN 4150 · AGE case</p>
+    <h1>Capital Structure Lab</h1>
+    <p class="lede">What borrowing does to return, risk, share price and the cost of capital. Every figure is read from the files in <code>data/</code>.</p>
+  </header>
+
+  <main>
+    <div id="status" class="status" role="status">Loading the data files…</div>
+    <div id="warnings"></div>
+
+    <section id="firms" class="panel" hidden>
+      <h2>Firm U and Firm L <span class="tag">Question c</span></h2>
+      <p class="note" id="firms-intro"></p>
+      <div class="firm-grid" id="firm-tables"></div>
+      <div class="lever" id="firm-lever">
+        <h3>Lever: Firm L's debt</h3>
+        <label class="slider-label" for="firm-debt">Firm L's debt: <output id="firm-debt-out"></output></label>
+        <input type="range" id="firm-debt" min="0" step="1" value="0">
+        <div class="buttons">
+          <button type="button" id="btn-case">Case</button>
+        </div>
+        <p class="note" id="firm-rate-note"></p>
+        <div id="firm-compare"></div>
+      </div>
+
+      <details class="formulas">
+        <summary>How these are calculated</summary>
+        <ul>
+          <li>EBIT = sales − operating costs. Interest = rate × debt. EBT = EBIT − interest.</li>
+          <li>Taxes = tax rate × EBT. Net income = EBT − taxes.</li>
+          <li>ROE = net income ÷ book equity, where equity = total assets − debt.</li>
+          <li>TIE = EBIT ÷ interest. Firm U pays no interest, so its TIE is n/a.</li>
+          <li>E(x) = Σ probability × x. σ(x) = √Σ probability × (x − E(x))². CV = σ ÷ E.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section id="cdss" class="panel" hidden>
+      <h2>Campus Deli and Sub Shop <span class="tag">Question d</span></h2>
+      <dl class="facts" id="cdss-facts"></dl>
+      <div id="cdss-summary" class="summary"></div>
+
+      <div class="lever" id="cdss-lever">
+        <h3>Lever: CDSS's debt</h3>
+        <label class="slider-label" for="cdss-debt">Amount borrowed: <output id="cdss-debt-out"></output></label>
+        <input type="range" id="cdss-debt" min="0" step="1" value="0">
+        <div class="ticks" id="cdss-ticks" aria-hidden="true"></div>
+        <div class="buttons">
+          <button type="button" id="btn-best-price">Best price</button>
+          <button type="button" id="btn-best-eps">Highest EPS</button>
+        </div>
+        <p class="note">The slider stops only at the banker's amounts. There are no costs of debt or equity in between.</p>
+        <div id="button-note"></div>
+        <div class="method-grid" id="cdss-results"></div>
+      </div>
+
+      <h3>Case method: buy back at today's <span id="p0"></span> <span class="tag">d(3), d(4), d(7)</span></h3>
+      <p class="note">Shares repurchased = D ÷ P₀. EPS = net income ÷ shares remaining. Price = EPS ÷ r<sub>s</sub>. WACC uses book weights: D/A × r<sub>d</sub>(1 − T) + (A − D)/A × r<sub>s</sub>.</p>
+      <div id="case-table"></div>
+
+      <h3>New-price method: buy back at the price after the announcement</h3>
+      <p class="note">Value of equity S = net income ÷ r<sub>s</sub>. Value of the firm V = S + D. Price P = V ÷ shares before the buyback. Shares repurchased = D ÷ P. WACC uses market weights: D/V × r<sub>d</sub>(1 − T) + S/V × r<sub>s</sub>.</p>
+      <div id="new-table"></div>
+
+      <details class="formulas">
+        <summary>How these are calculated</summary>
+        <ul>
+          <li>EBIT = sales × (1 − variable cost rate) − fixed costs. It is the same at every amount of debt.</li>
+          <li>Interest = r<sub>d</sub> × D. Net income = (EBIT − interest) × (1 − T). TIE = EBIT ÷ interest (n/a with no debt).</li>
+          <li>CDSS pays out all its earnings, so dividends per share = EPS and g = 0, which makes price = EPS ÷ r<sub>s</sub>.</li>
+          <li>Checks on the new-price method: EPS = r<sub>s</sub> × P, and the market-weight WACC = EBIT(1 − T) ÷ V.</li>
+          <li>Shown values are rounded half up; the math uses unrounded numbers throughout.</li>
+        </ul>
+      </details>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Runs entirely in your browser. No data leaves your device.</p>
+  </footer>
+
+  <script src="capstruct.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
