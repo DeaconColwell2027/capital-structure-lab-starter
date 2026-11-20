@@ -344,6 +344,14 @@
     );
   }
 
+  /* ---------- Service worker (install and offline) ---------- */
+
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch((err) => console.warn('Service worker not registered:', err));
+    });
+  }
+
   /* ---------- Start ---------- */
 
   const status = document.getElementById('status');
